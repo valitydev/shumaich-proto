@@ -22,6 +22,23 @@ struct AccountPrototype {
 /**
 * Структура данных, описывающая свойства счета:
 * id - номер сета (генерируется аккаунтером)
+* currency_sym_code - символьный код валюты (неизменяем после создания счета)
+* description - описания (неизменяемо после создания счета)
+* creation_time - время создания аккаунта
+*
+*У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
+* последовательность событий в истории счёта должна быть идентична.
+*/
+struct Account {
+    1: required AccountID id
+    2: required base.CurrencySymbolicCode currency_sym_code
+    3: optional string description
+    4: optional base.Timestamp creation_time
+}
+
+/**
+* Структура данных, описывающая свойства счета:
+* id - номер сета (генерируется аккаунтером)
 * own_amount - собственные средства (объём средств на счёте с учётом только подтвержденных операций)
 * max_available_amount - максимально возможные доступные средства
 * min_available_amount - минимально возможные доступные средства
@@ -30,20 +47,17 @@ struct AccountPrototype {
 * отрицательную сторону, подтверждены, а планы, где баланс изменяется в положительную сторону,
 * соответственно, отменены.
 * Для максимального значения действует обратное условие.
-* currency_sym_code - символьный код валюты (неизменяем после создания счета)
-* description - описания (неизменяемо после создания счета)
 *
+* clock - время подсчета баланса
 *У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
 * последовательность событий в истории счёта должна быть идентична.
 */
-struct Account {
+struct Balance {
     1: required AccountID id
     2: required base.Amount own_amount
     3: required base.Amount max_available_amount
     4: required base.Amount min_available_amount
-    5: required base.CurrencySymbolicCode currency_sym_code
-    6: optional string description
-    7: optional base.Timestamp creation_time
+    5: required Clock clock
 }
 
 /**
@@ -134,6 +148,7 @@ service Accounter {
     Clock CommitPlan(1: PostingPlan plan) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
     Clock RollbackPlan(1: PostingPlan plan) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
     PostingPlan GetPlan(1: PlanID id) throws (1: PlanNotFound e1)
-    Account GetAccountByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 3: ClockInFuture e2)
+    Account GetAccountByID(1: AccountID id) throws (1:AccountNotFound e1)
+    Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: ClockInFuture e2)
     AccountID CreateAccount(1: AccountPrototype prototype)
 }
