@@ -1,0 +1,11 @@
+{application, shumpune_proto, [
+    {description, "New thrift protocol for shumway"},
+    {vsn, "0.1"},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {maintainers, [
+        "Sergey Elin <s.elin@rbkmoney.com>"
+    ]}
+]}.
