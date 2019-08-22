@@ -1,15 +1,14 @@
 # Created by .ignore support plugin (hsz.mobi)
 .eunit
-deps
 *.o
 *.beam
 *.plt
 erl_crash.dump
-ebin/*.beam
-rel/example_project
 .concrete/DEV_MODE
 .rebar
-target/
+_build/
+src/*.erl
+include/*.hrl
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
