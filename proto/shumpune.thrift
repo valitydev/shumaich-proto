@@ -152,3 +152,13 @@ service Accounter {
     Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: ClockInFuture e2)
     AccountID CreateAccount(1: AccountPrototype prototype)
 }
+
+union MigrationBatch {
+    1: PostingPlanChange plan_change
+    2: PostingPlan plan
+}
+
+service MigrationHelper {
+    void migratePostingPlans(1: list<MigrationBatch> migrationBatch) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
+    void migrateAccounts(1: list<Account> accountList)
+}
