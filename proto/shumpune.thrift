@@ -153,15 +153,21 @@ service Accounter {
     AccountID CreateAccount(1: AccountPrototype prototype)
 }
 
+enum Operation {
+    HOLD,
+    COMMIT,
+    ROLLBACK
+}
+
 struct MigrationPostingPlan {
     1: required PlanID plan_id
     2: required BatchID batch_id
     3: required AccountID account_from_id
     4: required AccountID account_to_id
     5: required base.Amount amount
-    6: required string currency_symb_code
+    6: required base.CurrencySymbolicCode currency_symb_code
     7: required string description
-    8: required string creation_time
+    8: required base.Timestamp creation_time
     9: required string operation
 }
 
