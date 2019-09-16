@@ -153,12 +153,19 @@ service Accounter {
     AccountID CreateAccount(1: AccountPrototype prototype)
 }
 
-union MigrationBatch {
-    1: PostingPlanChange plan_change
-    2: PostingPlan plan
+struct MigrationPostingPlan {
+    1: required PlanID plan_id
+    2: required BatchID batch_id
+    3: required AccountID account_from_id
+    4: required AccountID account_to_id
+    5: required base.Amount amount
+    6: required string currency_symb_code
+    7: required string description
+    8: required string creation_time
+    9: required string operation
 }
 
 service MigrationHelper {
-    void migratePostingPlans(1: list<MigrationBatch> migrationBatch) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
+    void migratePostingPlans(1: list<MigrationPostingPlan> postings) throws (2: base.InvalidRequest e2)
     void migrateAccounts(1: list<Account> accountList)
 }
