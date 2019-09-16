@@ -168,7 +168,7 @@ struct MigrationPostingPlan {
     6: required base.CurrencySymbolicCode currency_symb_code
     7: required string description
     8: required base.Timestamp creation_time
-    9: required string operation
+    9: required Operation operation
 }
 
 service MigrationHelper {
