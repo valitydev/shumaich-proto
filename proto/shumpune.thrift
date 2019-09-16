@@ -154,8 +154,8 @@ service Accounter {
 }
 
 enum Operation {
-    HOLD,
-    COMMIT,
+    HOLD
+    COMMIT
     ROLLBACK
 }
 
@@ -172,6 +172,6 @@ struct MigrationPostingPlan {
 }
 
 service MigrationHelper {
-    void migratePostingPlans(1: list<MigrationPostingPlan> postings) throws (2: base.InvalidRequest e2)
+    void migratePostingPlans(1: list<MigrationPostingPlan> postings)
     void migrateAccounts(1: list<Account> accountList)
 }
