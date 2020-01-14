@@ -138,7 +138,7 @@ service Accounter {
     PostingPlan GetPlan(1: PlanID id) throws (1: PlanNotFound e1)
     Account GetAccountByID(1: AccountID id) throws (1:AccountNotFound e1)
     Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: ClockInFuture e2)
-    AccountID CreateAccount(1: Account prototype)
+    void CreateAccount(1: Account prototype)
 }
 
 enum Operation {
