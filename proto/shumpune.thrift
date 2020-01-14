@@ -8,18 +8,6 @@ typedef i64 BatchID
 typedef i64 AccountID
 
 /**
-* Данные, необходимые для создания счета:
-* currency_sym_code - символьный код валюты
-* description - описание
-* creation_time - время создания аккаунта
-*/
-struct AccountPrototype {
-    1: required base.CurrencySymbolicCode currency_sym_code
-    2: optional string description
-    3: optional base.Timestamp creation_time
-}
-
-/**
 * Структура данных, описывающая свойства счета:
 * id - номер сета (генерируется аккаунтером)
 * currency_sym_code - символьный код валюты (неизменяем после создания счета)
@@ -150,7 +138,7 @@ service Accounter {
     PostingPlan GetPlan(1: PlanID id) throws (1: PlanNotFound e1)
     Account GetAccountByID(1: AccountID id) throws (1:AccountNotFound e1)
     Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: ClockInFuture e2)
-    AccountID CreateAccount(1: AccountPrototype prototype)
+    AccountID CreateAccount(1: Account prototype)
 }
 
 enum Operation {
