@@ -9,7 +9,7 @@ typedef i64 AccountID
 
 /**
 * Структура данных, описывающая свойства счета:
-* id - номер сета (генерируется аккаунтером)
+* id - номер аккаунта, передаётся клиентом
 * currency_sym_code - символьный код валюты (неизменяем после создания счета)
 * description - описания (неизменяемо после создания счета)
 * creation_time - время создания аккаунта
@@ -129,16 +129,29 @@ exception InvalidPostingParams {
     1: required map<Posting, string> wrong_postings
 }
 
-exception ClockInFuture {}
+exception NotReady {}
+exception HoldError {}
+exception PlanNotClosed {}
 
 service Accounter {
-    Clock Hold(1: PostingPlanChange plan_change) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
-    Clock CommitPlan(1: PostingPlan plan) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
-    Clock RollbackPlan(1: PostingPlan plan) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
+    Clock Hold(1: PostingPlanChange plan_change)
+    throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2, 3: AccountNotFound e4)
+
+    Clock CommitPlan(1: PostingPlan plan, 2: Clock clock)
+    throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2, 3: NotReady e3, 4: HoldError e4)
+
+    Clock RollbackPlan(1: PostingPlan plan, 2: Clock clock)
+    throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2, 3: NotReady e3, 4: HoldError e4)
+
     PostingPlan GetPlan(1: PlanID id) throws (1: PlanNotFound e1)
-    Account GetAccountByID(1: AccountID id) throws (1:AccountNotFound e1)
-    Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: ClockInFuture e2)
-    void CreateAccount(1: Account prototype)
+
+    Account GetAccountByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: NotReady e2)
+
+    Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: NotReady e2)
+
+    Clock CreateAccount(1: Account prototype)
+
+    void Finalize(1: PlanID id) throws (1: PlanNotFound e1, 2: PlanNotClosed e2)
 }
 
 enum Operation {
