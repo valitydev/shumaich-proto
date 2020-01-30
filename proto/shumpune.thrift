@@ -4,6 +4,7 @@ namespace java com.rbkmoney.damsel.shumpune
 namespace erlang shumpune
 
 typedef string PlanID
+typedef string OperationID
 typedef i64 BatchID
 typedef i64 AccountID
 
@@ -95,23 +96,31 @@ struct PostingPlanChange {
 }
 
 union Clock {
+    // для новых операций
     1: VectorClock vector
+    // для старых операций, для обратной совместимости
     2: LatestClock latest
 }
 
 struct VectorClock {
+    // позволяет хранить не только клок(оффсеты партиций), но также operation_id, сгенерированный сервисом,
+    // для проверки статуса операции, а, возможно, и для более сложной логики
     1: required base.Opaque state
 }
 
 struct LatestClock {
 }
 
-/**
-* Результат применение единицы пополнения плана:
-* affected_accounts - новое состояние задействованных счетов
-*/
-struct PostingPlanLog {
-    2: required map<AccountID, Account> affected_accounts
+union Status {
+    1: OperationSucceeded succeeded
+    2: OperationNotReadyYet not_ready
+    3: OperationFailed failed
+}
+
+struct OperationSucceeded {}
+struct OperationNotReadyYet {}
+struct OperationFailed {
+    1: string reason //todo list/union of possible exceptions?
 }
 
 exception AccountNotFound {
@@ -132,26 +141,46 @@ exception InvalidPostingParams {
 exception NotReady {}
 exception HoldError {}
 exception PlanNotClosed {}
+exception OperationNotFound {}
 
 service Accounter {
-    Clock Hold(1: PostingPlanChange plan_change)
-    throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2, 3: AccountNotFound e4)
 
-    Clock CommitPlan(1: PostingPlan plan, 2: Clock clock)
-    throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2, 3: NotReady e3, 4: HoldError e4)
+    // В случае, если аккаунт не найден - создаём новый, с такой же валютой, как у других, задействованных в операции
+    Clock Hold(1: PostingPlanChange plan_change) throws (
+        1: InvalidPostingParams e1,
+        2: base.InvalidRequest e2
+    )
 
-    Clock RollbackPlan(1: PostingPlan plan, 2: Clock clock)
-    throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2, 3: NotReady e3, 4: HoldError e4)
+    Clock CommitPlan(1: PostingPlan plan, 2: Clock clock) throws (
+        1: InvalidPostingParams e1,
+        2: base.InvalidRequest e2,
+        3: NotReady e3
+    )
 
-    PostingPlan GetPlan(1: PlanID id) throws (1: PlanNotFound e1)
+    Clock RollbackPlan(1: PostingPlan plan, 2: Clock clock) throws (
+        1: InvalidPostingParams e1,
+        2: base.InvalidRequest e2,
+        3: NotReady e3
+    )
 
-    Account GetAccountByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: NotReady e2)
+    PostingPlan GetPlan(1: PlanID id) throws (
+        1: PlanNotFound e1
+    )
 
-    Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: NotReady e2)
+    Account GetAccountByID(1: AccountID id, 2: Clock clock) throws (
+        1: AccountNotFound e1,
+        2: NotReady e2
+    )
+
+    Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (
+        1: AccountNotFound e1,
+        2: NotReady e2
+    )
 
     Clock CreateAccount(1: Account prototype)
 
-    void Finalize(1: PlanID id) throws (1: PlanNotFound e1, 2: PlanNotClosed e2)
+    Status GetStatus(1: Clock clock)
+
 }
 
 enum Operation {
