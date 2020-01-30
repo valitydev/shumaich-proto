@@ -139,7 +139,6 @@ exception InvalidPostingParams {
 }
 
 exception NotReady {}
-exception HoldError {}
 exception PlanNotClosed {}
 exception OperationNotFound {}
 
