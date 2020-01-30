@@ -140,7 +140,6 @@ exception InvalidPostingParams {
 
 exception NotReady {}
 exception PlanNotClosed {}
-exception OperationNotFound {}
 
 service Accounter {
 
