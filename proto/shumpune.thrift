@@ -45,7 +45,7 @@ struct Balance {
     2: required base.Amount own_amount
     3: required base.Amount max_available_amount
     4: required base.Amount min_available_amount
-    5: required State state // нужно ли?
+    5: required ClockState state // нужно ли?
 }
 
 /**
@@ -92,20 +92,20 @@ struct PostingPlanChange {
    2: required PostingBatch batch
 }
 
-union State {
+union ClockState {
     // для новых операций
-    1: VectorState vector
+    1: VectorClockState vector
     // для старых операций, для обратной совместимости
-    2: LatestState latest
+    2: LatestClockState latest
 }
 
-struct VectorState {
+struct VectorClockState {
     // позволяет хранить не только клок(оффсеты партиций), но также operation_id, сгенерированный сервисом,
     // для проверки статуса операции, а, возможно, и для более сложной логики
     1: required base.Opaque state
 }
 
-struct LatestState {
+struct LatestClockState {
 }
 
 exception AccountNotFound {
@@ -132,7 +132,7 @@ service Accounter {
     * Валидация касательно дублирования предыдущего холда и совпадения в нём проводок будет проведена, если
     * предыдущий холд уже был считан и есть в базе. Иначе этой валидации не будет, холд запишется, но не будет учтён.
     **/
-    State Hold(1: PostingPlanChange plan_change) throws (
+    ClockState Hold(1: PostingPlanChange plan_change) throws (
         1: InvalidPostingParams e1,
         2: base.InvalidRequest e2
     )
@@ -140,19 +140,19 @@ service Accounter {
     /**
     * После коммита происходит очистка данных в системе, последующие ретраи коммитов будут выдавать InvalidRequest
     **/
-    State CommitPlan(1: PostingPlan plan, 2: State state) throws (
+    ClockState CommitPlan(1: PostingPlan plan, 2: ClockState state) throws (
         1: InvalidPostingParams e1, // cipher is not matching, postings are different from hold
         2: base.InvalidRequest e2, // no hold found
         3: NotReady e3
     )
 
-    State RollbackPlan(1: PostingPlan plan, 2: State state) throws (
+    ClockState RollbackPlan(1: PostingPlan plan, 2: ClockState state) throws (
         1: InvalidPostingParams e1, // cipher is not matching, postings are different from hold
         2: base.InvalidRequest e2, // no hold found
         3: NotReady e3
     )
 
-    Balance GetBalanceByID(1: AccountID id, 2: State state) throws (
+    Balance GetBalanceByID(1: AccountID id, 2: ClockState state) throws (
         1: AccountNotFound e1,
         2: NotReady e2
     )
@@ -161,7 +161,7 @@ service Accounter {
     * Создание аккаунтов проводится в Lazy режиме, так что state нужен для указания операции, после которой можно считать
     * аккаунт созданным.
     **/
-    Account GetAccountByID(1: AccountID id, 2: State state) throws (
+    Account GetAccountByID(1: AccountID id, 2: ClockState state) throws (
         1: AccountNotFound e1,
         2: NotReady e2
     )
