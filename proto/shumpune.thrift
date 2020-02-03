@@ -21,8 +21,8 @@ typedef i64 AccountID
 struct Account {
     1: required AccountID id
     2: required base.CurrencySymbolicCode currency_sym_code
-    3: optional string description
-    4: optional base.Timestamp creation_time
+    3: optional string description // нужно ли?
+    4: optional base.Timestamp creation_time // нужно ли?
 }
 
 /**
@@ -36,8 +36,7 @@ struct Account {
 * отрицательную сторону, подтверждены, а планы, где баланс изменяется в положительную сторону,
 * соответственно, отменены.
 * Для максимального значения действует обратное условие.
-*
-* clock - время подсчета баланса
+* state - время подсчета баланса
 *У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
 * последовательность событий в истории счёта должна быть идентична.
 */
@@ -46,23 +45,21 @@ struct Balance {
     2: required base.Amount own_amount
     3: required base.Amount max_available_amount
     4: required base.Amount min_available_amount
-    5: required Clock clock
+    5: required State state // нужно ли?
 }
 
 /**
 *  Описывает одну проводку в системе (перевод спедств с одного счета на другой):
-*  from_id - id счета, с которого производится списание
-*  to_id - id счета, на который производится зачисление
+*  from_acc - аккаунт, с которого производится списание
+*  to_acc - аккаунт, на который производится зачисление
 *  amount - объем переводимых средств (не может быть отрицательным)
-*  currency_sym_code - код валюты, должен совпадать с кодами задействованных счетов
 *  description - описание проводки
 */
 struct Posting {
-    1: required AccountID from_id
-    2: required AccountID to_id
+    1: required Account from_acc
+    2: required Account to_acc
     3: required base.Amount amount
-    4: required base.CurrencySymbolicCode currency_sym_code
-    5: required string description
+    4: required string description // нужно ли? Может вынести на уровень PostingBatch?
 }
 
 /**
@@ -95,32 +92,20 @@ struct PostingPlanChange {
    2: required PostingBatch batch
 }
 
-union Clock {
+union State {
     // для новых операций
-    1: VectorClock vector
+    1: VectorState vector
     // для старых операций, для обратной совместимости
-    2: LatestClock latest
+    2: LatestState latest
 }
 
-struct VectorClock {
+struct VectorState {
     // позволяет хранить не только клок(оффсеты партиций), но также operation_id, сгенерированный сервисом,
     // для проверки статуса операции, а, возможно, и для более сложной логики
     1: required base.Opaque state
 }
 
-struct LatestClock {
-}
-
-union Status {
-    1: OperationSucceeded succeeded
-    2: OperationNotReadyYet not_ready
-    3: OperationFailed failed
-}
-
-struct OperationSucceeded {}
-struct OperationNotReadyYet {}
-struct OperationFailed {
-    1: string reason //todo list/union of possible exceptions?
+struct LatestState {
 }
 
 exception AccountNotFound {
@@ -133,52 +118,53 @@ exception PlanNotFound {
 
 /**
 * Возникает в случае, если переданы некорректные параметры в одной или нескольких проводках
+* Или проводки не совпадают с шифром
 */
 exception InvalidPostingParams {
     1: required map<Posting, string> wrong_postings
 }
 
 exception NotReady {}
-exception PlanNotClosed {}
 
 service Accounter {
 
-    // В случае, если аккаунт не найден - создаём новый, с такой же валютой, как у других, задействованных в операции
-    Clock Hold(1: PostingPlanChange plan_change) throws (
+    /**
+    * Валидация касательно дублирования предыдущего холда и совпадения в нём проводок будет проведена, если
+    * предыдущий холд уже был считан и есть в базе. Иначе этой валидации не будет, холд запишется, но не будет учтён.
+    **/
+    State Hold(1: PostingPlanChange plan_change) throws (
         1: InvalidPostingParams e1,
         2: base.InvalidRequest e2
     )
 
-    Clock CommitPlan(1: PostingPlan plan, 2: Clock clock) throws (
-        1: InvalidPostingParams e1,
-        2: base.InvalidRequest e2,
+    /**
+    * После коммита происходит очистка данных в системе, последующие ретраи коммитов будут выдавать InvalidRequest
+    **/
+    State CommitPlan(1: PostingPlan plan, 2: State state) throws (
+        1: InvalidPostingParams e1, // cipher is not matching, postings are different from hold
+        2: base.InvalidRequest e2, // no hold found
         3: NotReady e3
     )
 
-    Clock RollbackPlan(1: PostingPlan plan, 2: Clock clock) throws (
-        1: InvalidPostingParams e1,
-        2: base.InvalidRequest e2,
+    State RollbackPlan(1: PostingPlan plan, 2: State state) throws (
+        1: InvalidPostingParams e1, // cipher is not matching, postings are different from hold
+        2: base.InvalidRequest e2, // no hold found
         3: NotReady e3
     )
 
-    PostingPlan GetPlan(1: PlanID id) throws (
-        1: PlanNotFound e1
-    )
-
-    Account GetAccountByID(1: AccountID id, 2: Clock clock) throws (
+    Balance GetBalanceByID(1: AccountID id, 2: State state) throws (
         1: AccountNotFound e1,
         2: NotReady e2
     )
 
-    Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (
+    /**
+    * Создание аккаунтов проводится в Lazy режиме, так что state нужен для указания операции, после которой можно считать
+    * аккаунт созданным.
+    **/
+    Account GetAccountByID(1: AccountID id, 2: State state) throws (
         1: AccountNotFound e1,
         2: NotReady e2
     )
-
-    Clock CreateAccount(1: Account prototype)
-
-    Status GetStatus(1: Clock clock)
-
 }
 
 enum Operation {
