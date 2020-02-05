@@ -46,15 +46,15 @@ struct Balance {
 }
 
 /**
-*  Описывает одну проводку в системе (перевод спедств с одного счета на другой):
-*  from_accout - аккаунт, с которого производится списание
+*  Описывает одну проводку в системе (перевод средств с одного счета на другой):
+*  from_account - аккаунт, с которого производится списание
 *  to_account - аккаунт, на который производится зачисление
 *  amount - объем переводимых средств (не может быть отрицательным)
 *  currency_sym_code - код валюты
 *  description - описание проводки
 */
 struct Posting {
-    1: required Account from_accout
+    1: required Account from_account
     2: required Account to_account
     3: required base.Amount amount
     4: required base.CurrencySymbolicCode currency_sym_code
@@ -72,7 +72,7 @@ struct PostingBatch {
 }
 
 /**
-* План проводок, состоит из набора батчей, который можно пополнить, подтвердить или отменить:
+ * План проводок, состоит из набора батчей, который можно пополнить, подтвердить или отменить:
  * id - идентификатор плана, уникален в рамках системы
  * batch_list - набор батчей, связанный с данным планом
 */
@@ -97,11 +97,14 @@ struct PostingPlanChange {
 union Clock {
     // для новых операций
     1: VectorClock vector
-    // для старых операций, для обратной совместимости
+    // для старых операций, для обратной совместимости. Не рекоммендуется к использованию.
     2: LatestClock latest
 }
 
-// https://en.wikipedia.org/wiki/Vector_clock
+/**
+ * https://en.wikipedia.org/wiki/Vector_clock
+ *
+ **/
 struct VectorClock {
     1: required base.Opaque state
 }
@@ -131,6 +134,11 @@ exception InvalidPostingParams {
 **/
 exception NotReady {}
 
+/**
+* Требования к клиентам сервиса:
+* 1) В случае неудачной попытки запроса по любой причине, кроме InvalidPostingParams, запрос должен быть повторён.
+* 2) В рамках одного плана запросы должны быть последовательны, после Commit/Rollback не может быть Hold
+**/
 service Accounter {
 
     /**
@@ -149,7 +157,7 @@ service Accounter {
     /**
     * Функция для подтверждения сформированного ранее плана.
     * Проводки в plan должны совпадать с проводками, сформированными на этапе вызовов Hold.
-    * Clock - значение, которое было возвращено методом Hold
+    * clock - значение, которое было возвращено методом Hold
     * После коммита последующие запросы по плану будут игнорироваться
     **/
     Clock CommitPlan(1: PostingPlan plan, 2: Clock clock) throws (
@@ -160,7 +168,7 @@ service Accounter {
     /**
     * Функция для отмены сформированного ранее плана.
     * Проводки в plan должны совпадать с проводками, сформированными на этапе вызовов Hold.
-    * Clock - значение, которое было возвращено методом Hold
+    * clock - значение, которое было возвращено методом Hold
     * После роллбэка последующие запросы по плану будут игнорироваться
     **/
     Clock RollbackPlan(1: PostingPlan plan, 2: Clock clock) throws (
@@ -168,6 +176,10 @@ service Accounter {
         2: NotReady e3
     )
 
+    /**
+    * Получение баланса аккаунта.
+    * clock - время операции, после которой хотелось бы узнать баланс.
+    **/
     Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (
         1: AccountNotFound e1,
         2: NotReady e2
