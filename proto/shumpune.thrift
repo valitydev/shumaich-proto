@@ -5,35 +5,21 @@ namespace erlang shumpune
 
 typedef string PlanID
 typedef i64 BatchID
-typedef i64 AccountID
-
-/**
-* Данные, необходимые для создания счета:
-* currency_sym_code - символьный код валюты
-* description - описание
-* creation_time - время создания аккаунта
-*/
-struct AccountPrototype {
-    1: required base.CurrencySymbolicCode currency_sym_code
-    2: optional string description
-    3: optional base.Timestamp creation_time
-}
+typedef string AccountID
 
 /**
 * Структура данных, описывающая свойства счета:
-* id - номер сета (генерируется аккаунтером)
+* id - номер аккаунта, передаётся клиентом
 * currency_sym_code - символьный код валюты (неизменяем после создания счета)
 * description - описания (неизменяемо после создания счета)
 * creation_time - время создания аккаунта
 *
-*У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
+* У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
 * последовательность событий в истории счёта должна быть идентична.
 */
 struct Account {
     1: required AccountID id
     2: required base.CurrencySymbolicCode currency_sym_code
-    3: optional string description
-    4: optional base.Timestamp creation_time
 }
 
 /**
@@ -47,9 +33,8 @@ struct Account {
 * отрицательную сторону, подтверждены, а планы, где баланс изменяется в положительную сторону,
 * соответственно, отменены.
 * Для максимального значения действует обратное условие.
-*
 * clock - время подсчета баланса
-*У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
+* У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
 * последовательность событий в истории счёта должна быть идентична.
 */
 struct Balance {
@@ -61,16 +46,16 @@ struct Balance {
 }
 
 /**
-*  Описывает одну проводку в системе (перевод спедств с одного счета на другой):
-*  from_id - id счета, с которого производится списание
-*  to_id - id счета, на который производится зачисление
+*  Описывает одну проводку в системе (перевод средств с одного счета на другой):
+*  from_account - аккаунт, с которого производится списание
+*  to_account - аккаунт, на который производится зачисление
 *  amount - объем переводимых средств (не может быть отрицательным)
-*  currency_sym_code - код валюты, должен совпадать с кодами задействованных счетов
+*  currency_sym_code - код валюты
 *  description - описание проводки
 */
 struct Posting {
-    1: required AccountID from_id
-    2: required AccountID to_id
+    1: required Account from_account
+    2: required Account to_account
     3: required base.Amount amount
     4: required base.CurrencySymbolicCode currency_sym_code
     5: required string description
@@ -87,7 +72,7 @@ struct PostingBatch {
 }
 
 /**
-* План проводок, состоит из набора батчей, который можно пополнить, подтвердить или отменить:
+ * План проводок, состоит из набора батчей, который можно пополнить, подтвердить или отменить:
  * id - идентификатор плана, уникален в рамках системы
  * batch_list - набор батчей, связанный с данным планом
 */
@@ -106,24 +91,25 @@ struct PostingPlanChange {
    2: required PostingBatch batch
 }
 
+/**
+* Структура, позволяющая установить причинно-следственную связь операций внутри сервиса
+**/
 union Clock {
+    // для новых операций
     1: VectorClock vector
+    // для старых операций, для обратной совместимости. Не рекоммендуется к использованию.
     2: LatestClock latest
 }
 
+/**
+ * https://en.wikipedia.org/wiki/Vector_clock
+ *
+ **/
 struct VectorClock {
     1: required base.Opaque state
 }
 
 struct LatestClock {
-}
-
-/**
-* Результат применение единицы пополнения плана:
-* affected_accounts - новое состояние задействованных счетов
-*/
-struct PostingPlanLog {
-    2: required map<AccountID, Account> affected_accounts
 }
 
 exception AccountNotFound {
@@ -135,22 +121,74 @@ exception PlanNotFound {
 }
 
 /**
-* Возникает в случае, если переданы некорректные параметры в одной или нескольких проводках
+* Возникает в случае, если переданы некорректные параметры в одной или нескольких проводках,
+* либо проводки финальной операции не совпадают с холдом.
 */
 exception InvalidPostingParams {
     1: required map<Posting, string> wrong_postings
 }
 
-exception ClockInFuture {}
+/**
+* Исключение, говорящее о том, что сервис ещё не успел синхронизироваться до переданного Clock.
+* Необходимо повторить запрос.
+**/
+exception NotReady {}
 
+/**
+* Требования к клиентам сервиса:
+* 1) В случае неудачной попытки запроса по любой причине, кроме InvalidPostingParams, запрос должен быть повторён.
+* 2) В рамках одного плана запросы должны быть последовательны, после Commit/Rollback не может быть Hold
+**/
 service Accounter {
-    Clock Hold(1: PostingPlanChange plan_change) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
-    Clock CommitPlan(1: PostingPlan plan) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
-    Clock RollbackPlan(1: PostingPlan plan) throws (1: InvalidPostingParams e1, 2: base.InvalidRequest e2)
-    PostingPlan GetPlan(1: PlanID id) throws (1: PlanNotFound e1)
-    Account GetAccountByID(1: AccountID id) throws (1:AccountNotFound e1)
-    Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (1:AccountNotFound e1, 2: ClockInFuture e2)
-    AccountID CreateAccount(1: AccountPrototype prototype)
+
+    /**
+    * Функция для формирования плана для будущего коммита. Может использоваться как для создания, так и для дополнения
+    * существующего плана.
+    * В случае дополнения плана необходимо передать clock предыдущего холда.
+    * В случае, если в плане будет указан не существующий аккаунт - аккаунт будет создан.
+    **/
+    Clock Hold(1: PostingPlanChange plan_change, 2: Clock clock) throws (
+        1: InvalidPostingParams e1
+    )
+
+    /**
+    * Функция для подтверждения сформированного ранее плана.
+    * Проводки в plan должны совпадать с проводками, сформированными на этапе вызовов Hold.
+    * clock - значение, которое было возвращено методом Hold
+    * После успешного коммита план будет считаться не существовавшим.
+    **/
+    Clock CommitPlan(1: PostingPlan plan, 2: Clock clock) throws (
+        1: InvalidPostingParams e1,
+        2: NotReady e3
+    )
+
+    /**
+    * Функция для отмены сформированного ранее плана.
+    * Проводки в plan должны совпадать с проводками, сформированными на этапе вызовов Hold.
+    * clock - значение, которое было возвращено методом Hold
+    * После успешного роллбэка план будет считаться не существовавшим.
+    **/
+    Clock RollbackPlan(1: PostingPlan plan, 2: Clock clock) throws (
+        1: InvalidPostingParams e1,
+        2: NotReady e3
+    )
+
+    /**
+    * Получение баланса аккаунта.
+    * clock - время операции, после которой хотелось бы узнать баланс.
+    **/
+    Balance GetBalanceByID(1: AccountID id, 2: Clock clock) throws (
+        1: AccountNotFound e1,
+        2: NotReady e2
+    )
+
+    /**
+    * Clock - время последней известной операции по этому аккаунту.
+    **/
+    Account GetAccountByID(1: AccountID id, 2: Clock clock) throws (
+        1: AccountNotFound e1,
+        2: NotReady e2
+    )
 }
 
 enum Operation {
