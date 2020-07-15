@@ -14,7 +14,6 @@ typedef string TraceID
 * Структура данных, описывающая свойства счета:
 * id - номер аккаунта, передаётся клиентом
 * currency_sym_code - символьный код валюты (неизменяем после создания счета)
-* description - описания (неизменяемо после создания счета)
 *
 * У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
 * последовательность событий в истории счёта должна быть идентична.
@@ -26,7 +25,7 @@ struct Account {
 
 /**
 * Структура данных, описывающая свойства счета:
-* id - номер сета (генерируется аккаунтером)
+* id - номер аккаунта
 * own_amount - собственные средства (объём средств на счёте с учётом только подтвержденных операций)
 * max_available_amount - максимально возможные доступные средства
 * min_available_amount - минимально возможные доступные средства
@@ -112,7 +111,7 @@ struct OperationLog {
     9:  required i64 total
     10: required i64 batch_hash
     11: required ValidationStatus validation_status
-    12: required i64 operation_time_ms
+    12: required i64 creation_time_ms
     13: optional SpanID span_id
     14: optional ParentID parent_id
     15: optional TraceID trace_id
@@ -225,21 +224,4 @@ enum OperationType {
 
 enum ValidationStatus {
     HOLD_NOT_EXIST
-}
-
-struct MigrationPostingPlan {
-    1: required PlanID plan_id
-    2: required BatchID batch_id
-    3: required AccountID account_from_id
-    4: required AccountID account_to_id
-    5: required base.Amount amount
-    6: required base.CurrencySymbolicCode currency_symbolic_code
-    7: required string description
-    8: required base.Timestamp creation_time
-    9: required OperationType operation
-}
-
-service MigrationHelper {
-    void migratePostingPlans(1: list<MigrationPostingPlan> postings)
-    void migrateAccounts(1: list<Account> accountList)
 }
