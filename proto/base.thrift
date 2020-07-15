@@ -1,4 +1,4 @@
-namespace java com.rbkmoney.damsel.shumpune.base
+namespace java com.rbkmoney.damsel.shumaich.base
 namespace erlang base
 
 /** Символьный код, уникально идентифицирующий валюту. */

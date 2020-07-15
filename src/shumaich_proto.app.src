@@ -1,4 +1,4 @@
-{application, shumpune_proto, [
+{application, shumaich_proto, [
     {description, "New thrift protocol for shumway"},
     {vsn, "0.1"},
     {applications, [

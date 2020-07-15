@@ -7,16 +7,30 @@
     <parent>
         <groupId>com.rbkmoney</groupId>
         <artifactId>parent</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.5</version>
     </parent>
 
-    <artifactId>shumpune-proto</artifactId>
+    <artifactId>shumaich-proto</artifactId>
     <version>SNAPSHOT</version>
     <packaging>jar</packaging>
 
 
-    <name>Shumpune</name>
+    <name>Shumaich proto</name>
     <description>Generates jar artifact containing compiled thrift classes based on generated thrift IDL files</description>
+    <url>https://github.com/rbkmoney/shumaich-proto.git</url>
+
+    <developers>
+        <developer>
+            <organization>RBK.money</organization>
+            <organizationUrl>https://rbk.money</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/rbkmoney/shumaich-proto.git</connection>
+        <developerConnection>scm:git:ssh://github.com/rbkmoney/shumaich-proto.git</developerConnection>
+        <url>https://github.com/rbkmoney/shumaich-proto/tree/master</url>
+    </scm>
 
 
     <properties>
@@ -28,7 +42,7 @@
         <dependency>
             <groupId>com.rbkmoney.woody</groupId>
             <artifactId>woody-thrift</artifactId>
-            <version>LATEST</version>
+            <version>[1.1.21,)</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -45,7 +59,7 @@
             <plugin>
                 <groupId>org.apache.thrift</groupId>
                 <artifactId>thrift-maven-plugin</artifactId>
-                <version>0.9.3-1</version>
+                <version>0.10.0</version>
                 <configuration>
                     <generator>java:fullcamel</generator>
                     <thriftSourceRoot>${project.basedir}/proto</thriftSourceRoot>
