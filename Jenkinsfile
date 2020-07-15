@@ -1,7 +1,7 @@
 #!groovy
 // -*- mode: groovy -*-
 
-build('shumpune-proto', 'docker-host') {
+build('shumaich-proto', 'docker-host') {
     checkoutRepo()
     loadBuildUtils()
 

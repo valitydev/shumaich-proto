@@ -1,7 +1,7 @@
 include 'base.thrift'
 
-namespace java com.rbkmoney.damsel.shumpune
-namespace erlang shumpune
+namespace java com.rbkmoney.damsel.shumaich
+namespace erlang shumaich
 
 typedef string PlanID
 typedef i64 BatchID

@@ -10,12 +10,12 @@
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>shumpune-proto</artifactId>
+    <artifactId>shumaich-proto</artifactId>
     <version>SNAPSHOT</version>
     <packaging>jar</packaging>
 
 
-    <name>Shumpune</name>
+    <name>shumaich</name>
     <description>Generates jar artifact containing compiled thrift classes based on generated thrift IDL files</description>
 
 

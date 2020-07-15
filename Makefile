@@ -7,7 +7,7 @@ UTILS_PATH := build_utils
 TEMPLATES_PATH := .
 
 # Name of the service
-SERVICE_NAME := shumpune-proto
+SERVICE_NAME := shumaich-proto
 
 # Build image tag to be used
 BUILD_IMAGE_TAG := bdc05544014b3475c8e0726d3b3d6fc81b09db96
