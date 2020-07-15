@@ -6,20 +6,22 @@ namespace erlang shumpune
 typedef string PlanID
 typedef i64 BatchID
 typedef string AccountID
+typedef string SpanID
+typedef string ParentID
+typedef string TraceID
 
 /**
 * Структура данных, описывающая свойства счета:
 * id - номер аккаунта, передаётся клиентом
 * currency_sym_code - символьный код валюты (неизменяем после создания счета)
 * description - описания (неизменяемо после создания счета)
-* creation_time - время создания аккаунта
 *
 * У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
 * последовательность событий в истории счёта должна быть идентична.
 */
 struct Account {
     1: required AccountID id
-    2: required base.CurrencySymbolicCode currency_sym_code
+    2: required base.CurrencySymbolicCode currency_symbolic_code
 }
 
 /**
@@ -28,12 +30,12 @@ struct Account {
 * own_amount - собственные средства (объём средств на счёте с учётом только подтвержденных операций)
 * max_available_amount - максимально возможные доступные средства
 * min_available_amount - минимально возможные доступные средства
-* Где минимально возможные доступные средства - это объем средств с учетом подтвержденных и не подтвержденных
-* операций в определённый момент времени в предположении, что все планы с батчами, где баланс этого счёта изменяется в
-* отрицательную сторону, подтверждены, а планы, где баланс изменяется в положительную сторону,
-* соответственно, отменены.
-* Для максимального значения действует обратное условие.
+*   Где минимально возможные доступные средства - это объем средств с учетом подтвержденных и не подтвержденных
+*   операций в определённый момент времени в предположении, что все планы с батчами, где баланс этого счёта изменяется в
+*   отрицательную сторону, подтверждены, а планы, где баланс изменяется в положительную сторону, соответственно, отменены.
+*   Для максимального значения действует обратное условие.
 * clock - время подсчета баланса
+*
 * У каждого счёта должна быть сериализованная история, то есть наблюдаемая любым клиентом в определённый момент времени
 * последовательность событий в истории счёта должна быть идентична.
 */
@@ -57,7 +59,7 @@ struct Posting {
     1: required Account from_account
     2: required Account to_account
     3: required base.Amount amount
-    4: required base.CurrencySymbolicCode currency_sym_code
+    4: required base.CurrencySymbolicCode currency_symbolic_code
     5: required string description
 }
 
@@ -75,20 +77,45 @@ struct PostingBatch {
  * План проводок, состоит из набора батчей, который можно пополнить, подтвердить или отменить:
  * id - идентификатор плана, уникален в рамках системы
  * batch_list - набор батчей, связанный с данным планом
+ * creation_time - логическое время, к которому привязана транзакция
 */
 struct PostingPlan {
     1: required PlanID id
     2: required list<PostingBatch> batch_list
+    3: optional base.Timestamp creation_time
 }
 
 /**
 * Описывает единицу пополнения плана:
 * id - id плана, к которому применяется данное изменение
 * batch - набор проводок, который нужно добавить в план
+* creation_time - логическое время, к которому привязана транзакция
 */
 struct PostingPlanChange {
    1: required PlanID id
    2: required PostingBatch batch
+   3: optional base.Timestamp creation_time
+}
+
+/**
+* Плоская структура, описывающая операцию. Используется для записи в Kafka
+*/
+struct OperationLog {
+    1:  required PlanID plan_id
+    2:  required BatchID batch_id
+    3:  required OperationType operation_type
+    4:  required Account account
+    5:  required base.Amount amount_with_sign
+    6:  required base.CurrencySymbolicCode currency_symbolic_code
+    7:  required string description
+    8:  required i64 sequence
+    9:  required i64 total
+    10: required i64 batch_hash
+    11: required ValidationStatus validation_status
+    12: required i64 operation_time_ms
+    13: optional SpanID span_id
+    14: optional ParentID parent_id
+    15: optional TraceID trace_id
 }
 
 /**
@@ -103,7 +130,6 @@ union Clock {
 
 /**
  * https://en.wikipedia.org/wiki/Vector_clock
- *
  **/
 struct VectorClock {
     1: required base.Opaque state
@@ -191,10 +217,14 @@ service Accounter {
     )
 }
 
-enum Operation {
+enum OperationType {
     HOLD
     COMMIT
     ROLLBACK
+}
+
+enum ValidationStatus {
+    HOLD_NOT_EXIST
 }
 
 struct MigrationPostingPlan {
@@ -203,10 +233,10 @@ struct MigrationPostingPlan {
     3: required AccountID account_from_id
     4: required AccountID account_to_id
     5: required base.Amount amount
-    6: required base.CurrencySymbolicCode currency_symb_code
+    6: required base.CurrencySymbolicCode currency_symbolic_code
     7: required string description
     8: required base.Timestamp creation_time
-    9: required Operation operation
+    9: required OperationType operation
 }
 
 service MigrationHelper {
