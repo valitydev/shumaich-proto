@@ -9,6 +9,7 @@ typedef string AccountID
 typedef string SpanID
 typedef string ParentID
 typedef string TraceID
+typedef i64 SequenceID
 
 /**
 * Структура данных, описывающая свойства счета:
@@ -107,10 +108,10 @@ struct OperationLog {
     5:  required base.Amount amount_with_sign
     6:  required base.CurrencySymbolicCode currency_symbolic_code
     7:  required string description
-    8:  required i64 sequence
-    9:  required i64 total
+    8:  required SequenceID sequence_id
+    9:  required i64 plan_operations_count
     10: required i64 batch_hash
-    11: required ValidationStatus validation_status
+    11: optional ValidationError validation_error
     12: required i64 creation_time_ms
     13: optional SpanID span_id
     14: optional ParentID parent_id
@@ -222,6 +223,6 @@ enum OperationType {
     ROLLBACK
 }
 
-enum ValidationStatus {
+enum ValidationError {
     HOLD_NOT_EXIST
 }
