@@ -5,7 +5,7 @@ namespace erlang shumaich
 
 typedef string PlanID
 typedef i64 BatchID
-typedef string AccountID
+typedef i64 AccountID
 typedef string SpanID
 typedef string ParentID
 typedef string TraceID
