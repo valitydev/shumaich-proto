@@ -175,6 +175,7 @@ service Accounter {
     **/
     Clock Hold(1: PostingPlanChange plan_change, 2: Clock clock) throws (
         1: InvalidPostingParams e1
+        2: NotReady e2
     )
 
     /**
