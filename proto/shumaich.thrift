@@ -1,6 +1,6 @@
 include 'base.thrift'
 
-namespace java com.rbkmoney.damsel.shumaich
+namespace java dev.vality.damsel.shumaich
 namespace erlang shumaich
 
 typedef string PlanID
